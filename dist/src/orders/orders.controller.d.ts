@@ -26,6 +26,9 @@ export declare class OrdersController {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
     getMyOrders(req: any): Promise<{
         id: number;
@@ -49,6 +52,9 @@ export declare class OrdersController {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }[]>;
     getMitraOrders(req: any): Promise<{
         id: number;
@@ -72,6 +78,9 @@ export declare class OrdersController {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }[]>;
     getWallet(req: any): Promise<{
         balance: number;
@@ -83,6 +92,9 @@ export declare class OrdersController {
             order_id: number;
             created_at: Date;
         }[];
+    }>;
+    getUserWallet(req: any): Promise<{
+        balance: number;
     }>;
     getOrderById(id: number, req: any): Promise<{
         id: number;
@@ -106,6 +118,9 @@ export declare class OrdersController {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
     updateStatus(id: number, req: any, dto: UpdateOrderStatusDto): Promise<{
         id: number;
@@ -129,6 +144,9 @@ export declare class OrdersController {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
     cancelOrder(id: number, req: any): Promise<{
         id: number;
@@ -152,5 +170,61 @@ export declare class OrdersController {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
+    requestCancellation(id: number, req: any, reason?: string): Promise<{
+        id: number;
+        user_id: number;
+        mitra_id: number;
+        mitra_name: string;
+        mitra_avatar_url: string;
+        customer_name: string;
+        category_id: string;
+        category_name: string;
+        status: string;
+        item_description: string;
+        store_name: string;
+        notes: string;
+        photo_url: string;
+        item_budget: number;
+        service_fee: number;
+        platform_fee: number;
+        total_amount: number;
+        created_at: Date;
+        accepted_at: Date;
+        completed_at: Date;
+        is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
+    }>;
+    respondCancellation(id: number, req: any, approve: boolean): Promise<{
+        id: number;
+        user_id: number;
+        mitra_id: number;
+        mitra_name: string;
+        mitra_avatar_url: string;
+        customer_name: string;
+        category_id: string;
+        category_name: string;
+        status: string;
+        item_description: string;
+        store_name: string;
+        notes: string;
+        photo_url: string;
+        item_budget: number;
+        service_fee: number;
+        platform_fee: number;
+        total_amount: number;
+        created_at: Date;
+        accepted_at: Date;
+        completed_at: Date;
+        is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
+    }>;
+    withdrawWallet(req: any, amount: number): Promise<object>;
 }

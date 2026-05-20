@@ -76,10 +76,14 @@ let AdminService = AdminService_1 = class AdminService {
                 domicile: '',
                 phoneNumber: '',
                 isVerified: true,
+                ...(registration.latitude !== null && { latitude: registration.latitude }),
+                ...(registration.longitude !== null && { longitude: registration.longitude }),
             },
             update: {
                 category: registration.serviceCategory,
                 isVerified: true,
+                ...(registration.latitude !== null && { latitude: registration.latitude }),
+                ...(registration.longitude !== null && { longitude: registration.longitude }),
             },
         });
         this.logger.log(`[ADMIN] APPROVE: registrationId=${registrationId} | userId=${registration.userId} | adminId=${adminId} | MitraProfile created`);
@@ -107,6 +111,27 @@ let AdminService = AdminService_1 = class AdminService {
             },
         });
         this.logger.log(`[ADMIN] REJECT: registrationId=${registrationId} | userId=${registration.userId} | adminId=${adminId} | note="${adminNote}"`);
+        return updated;
+    }
+    async resetRegistrationForReview(registrationId, adminId, adminNote) {
+        const registration = await this.prisma.mitraRegistration.findUnique({
+            where: { id: registrationId },
+        });
+        if (!registration) {
+            throw new common_1.NotFoundException(`Pendaftaran dengan ID ${registrationId} tidak ditemukan`);
+        }
+        if (registration.status === mitra_service_1.RegistrationStatus.PENDING) {
+            throw new common_1.BadRequestException('Pendaftaran ini sudah berstatus PENDING — tidak perlu direset.');
+        }
+        const updated = await this.prisma.mitraRegistration.update({
+            where: { id: registrationId },
+            data: {
+                status: mitra_service_1.RegistrationStatus.PENDING,
+                reviewedBy: adminId,
+                adminNote: adminNote ?? 'Dokumen diminta untuk ditinjau ulang oleh admin.',
+            },
+        });
+        this.logger.log(`[ADMIN] RESET-TO-PENDING: registrationId=${registrationId} | userId=${registration.userId} | adminId=${adminId}`);
         return updated;
     }
     async getRegistrationStats() {

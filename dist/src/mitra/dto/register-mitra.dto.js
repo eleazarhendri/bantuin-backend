@@ -40,4 +40,18 @@ __decorate([
     (0, class_validator_1.MaxLength)(1000, { message: 'Deskripsi pengalaman maksimal 1000 karakter' }),
     __metadata("design:type", String)
 ], RegisterMitraDto.prototype, "experience", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)({}, { message: 'Latitude harus berupa angka' }),
+    (0, class_validator_1.Min)(-90, { message: 'Latitude tidak valid' }),
+    (0, class_validator_1.Max)(90, { message: 'Latitude tidak valid' }),
+    __metadata("design:type", Number)
+], RegisterMitraDto.prototype, "latitude", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)({}, { message: 'Longitude harus berupa angka' }),
+    (0, class_validator_1.Min)(-180, { message: 'Longitude tidak valid' }),
+    (0, class_validator_1.Max)(180, { message: 'Longitude tidak valid' }),
+    __metadata("design:type", Number)
+], RegisterMitraDto.prototype, "longitude", void 0);
 //# sourceMappingURL=register-mitra.dto.js.map

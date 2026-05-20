@@ -45,6 +45,7 @@ let AuthController = class AuthController {
             photoUrl: user.photoUrl,
             role: user.role,
             isMitra: user.isMitra,
+            hasPassword: !!user.password,
         };
     }
 };

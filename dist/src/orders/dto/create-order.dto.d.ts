@@ -8,4 +8,5 @@ export declare class CreateOrderDto {
     photoUrl?: string;
     itemBudget: number;
     serviceFee: number;
+    paymentMethod?: string;
 }

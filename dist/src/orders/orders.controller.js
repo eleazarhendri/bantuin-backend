@@ -34,6 +34,9 @@ let OrdersController = class OrdersController {
     getWallet(req) {
         return this.ordersService.getWallet(req.user.id);
     }
+    getUserWallet(req) {
+        return this.ordersService.getUserWallet(req.user.id);
+    }
     getOrderById(id, req) {
         return this.ordersService.getOrderById(id, req.user.id);
     }
@@ -42,6 +45,15 @@ let OrdersController = class OrdersController {
     }
     cancelOrder(id, req) {
         return this.ordersService.cancelOrder(id, req.user.id);
+    }
+    requestCancellation(id, req, reason) {
+        return this.ordersService.requestCancellation(id, req.user.id, reason);
+    }
+    respondCancellation(id, req, approve) {
+        return this.ordersService.respondCancellation(id, req.user.id, approve);
+    }
+    withdrawWallet(req, amount) {
+        return this.ordersService.withdrawWallet(req.user.id, amount);
     }
 };
 exports.OrdersController = OrdersController;
@@ -76,6 +88,13 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "getWallet", null);
 __decorate([
+    (0, common_1.Get)('user-wallet'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "getUserWallet", null);
+__decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Request)()),
@@ -101,6 +120,35 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "cancelOrder", null);
+__decorate([
+    (0, common_1.Post)(':id/cancel-request'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.Body)('reason')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, String]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "requestCancellation", null);
+__decorate([
+    (0, common_1.Post)(':id/cancel-respond'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.Body)('approve')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, Boolean]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "respondCancellation", null);
+__decorate([
+    (0, common_1.Post)('wallet/withdraw'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)('amount')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "withdrawWallet", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, common_1.Controller)('orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

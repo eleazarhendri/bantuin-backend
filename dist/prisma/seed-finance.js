@@ -31,16 +31,19 @@ async function main() {
             email: 'azriel@student.ugm.ac.id', name: 'Azriel Pratama',
             category: 'jastip,beberes', campus: 'UGM', domicile: 'Sleman',
             description: 'Jastip dan beberes kos area Sleman & Jogja Kota',
+            latitude: -7.7714, longitude: 110.3776,
         },
         {
             email: 'reza@student.uny.ac.id', name: 'Reza Firmansyah',
             category: 'servis,desain', campus: 'UNY', domicile: 'Bantul',
             description: 'Servis gadget dan desain grafis profesional',
+            latitude: -7.7720, longitude: 110.3868,
         },
         {
             email: 'siti@student.uii.ac.id', name: 'Siti Nurhaliza',
             category: 'les,joki', campus: 'UII', domicile: 'Sleman',
             description: 'Les privat dan tutor sebaya semua mata kuliah',
+            latitude: -7.7200, longitude: 110.4100,
         },
     ];
     const mitras = [];
@@ -68,8 +71,10 @@ async function main() {
                 rating: 4.5 + Math.random() * 0.5,
                 totalReviews: Math.floor(Math.random() * 20) + 5,
                 totalOrders: Math.floor(Math.random() * 30) + 10,
+                latitude: m.latitude,
+                longitude: m.longitude,
             },
-            update: { isVerified: true, isOnline: true },
+            update: { isVerified: true, isOnline: true, latitude: m.latitude, longitude: m.longitude },
         });
         mitras.push({ id: user.id, name: user.name ?? m.name });
         console.log(`[SEED] Mitra profile upsert: ${m.email}`);
@@ -93,7 +98,7 @@ async function main() {
     for (const mitra of mitras) {
         const wallet = await prisma.wallet.upsert({
             where: { userId: mitra.id },
-            create: { userId: mitra.id, balance: 0 },
+            create: { userId: mitra.id, balance: 20_000 },
             update: {},
         });
         const numOrders = 5 + Math.floor(Math.random() * 4);

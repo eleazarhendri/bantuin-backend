@@ -1,6 +1,8 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterMitraDto } from './dto/register-mitra.dto';
-import { MitraRegistration, MitraProfile, User } from '@prisma/client';
+import { CreateMitraServiceDto } from './dto/create-mitra-service.dto';
+import { UpdateMitraServiceDto } from './dto/update-mitra-service.dto';
+import { MitraRegistration, MitraProfile, MitraService as PrismaMitraService, User } from '@prisma/client';
 export declare const RegistrationStatus: {
     readonly PENDING: "PENDING";
     readonly APPROVED: "APPROVED";
@@ -35,5 +37,12 @@ export declare class MitraService {
         domicile?: string;
         phoneNumber?: string;
     }): Promise<object>;
+    updateMitraLocation(userId: number, latitude: number, longitude: number): Promise<object>;
     formatMitraProfile(profile: MitraWithUser): object;
+    formatService(s: PrismaMitraService): object;
+    getMyServices(userId: number): Promise<PrismaMitraService[]>;
+    createService(userId: number, dto: CreateMitraServiceDto): Promise<PrismaMitraService>;
+    updateService(serviceId: number, userId: number, dto: UpdateMitraServiceDto): Promise<PrismaMitraService>;
+    deleteService(serviceId: number, userId: number): Promise<void>;
+    private _syncProfileCategory;
 }

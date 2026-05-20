@@ -9,61 +9,44 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreateOrderDto = void 0;
+exports.UpdateMitraServiceDto = void 0;
 const class_validator_1 = require("class-validator");
-class CreateOrderDto {
+class UpdateMitraServiceDto {
 }
-exports.CreateOrderDto = CreateOrderDto;
-__decorate([
-    (0, class_validator_1.IsInt)(),
-    __metadata("design:type", Number)
-], CreateOrderDto.prototype, "mitraId", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateOrderDto.prototype, "categoryId", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateOrderDto.prototype, "categoryName", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateOrderDto.prototype, "itemDescription", void 0);
+exports.UpdateMitraServiceDto = UpdateMitraServiceDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsIn)(['jastip', 'servis', 'les', 'beberes', 'desain', 'pindahan', 'joki', 'curhat'], { message: 'categoryId tidak valid' }),
     __metadata("design:type", String)
-], CreateOrderDto.prototype, "storeName", void 0);
+], UpdateMitraServiceDto.prototype, "categoryId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(80),
     __metadata("design:type", String)
-], CreateOrderDto.prototype, "notes", void 0);
+], UpdateMitraServiceDto.prototype, "title", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(500),
     __metadata("design:type", String)
-], CreateOrderDto.prototype, "photoUrl", void 0);
+], UpdateMitraServiceDto.prototype, "description", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
-], CreateOrderDto.prototype, "itemBudget", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(0),
-    __metadata("design:type", Number)
-], CreateOrderDto.prototype, "serviceFee", void 0);
+], UpdateMitraServiceDto.prototype, "price", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsIn)(['wallet', 'cash', 'transfer'], {
-        message: 'paymentMethod harus salah satu dari: wallet, cash, transfer',
-    }),
+    (0, class_validator_1.IsIn)(['jam', 'item', 'sesi', 'hari', 'proyek']),
     __metadata("design:type", String)
-], CreateOrderDto.prototype, "paymentMethod", void 0);
-//# sourceMappingURL=create-order.dto.js.map
+], UpdateMitraServiceDto.prototype, "priceUnit", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateMitraServiceDto.prototype, "isActive", void 0);
+//# sourceMappingURL=update-mitra-service.dto.js.map

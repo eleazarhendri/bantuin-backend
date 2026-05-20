@@ -16,13 +16,40 @@ const jwt_1 = require("@nestjs/jwt");
 const google_auth_library_1 = require("google-auth-library");
 const bcrypt = require("bcrypt");
 const users_service_1 = require("../users/users.service");
+const prisma_service_1 = require("../prisma/prisma.service");
+const INITIAL_WALLET_BALANCE = 20_000;
 let AuthService = AuthService_1 = class AuthService {
-    constructor(usersService, jwtService) {
+    constructor(usersService, jwtService, prisma) {
         this.usersService = usersService;
         this.jwtService = jwtService;
+        this.prisma = prisma;
         this.logger = new common_1.Logger(AuthService_1.name);
         this.BCRYPT_ROUNDS = 12;
         this.googleClient = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    }
+    async createInitialWallet(userId) {
+        try {
+            await this.prisma.wallet.upsert({
+                where: { userId },
+                create: {
+                    userId,
+                    balance: INITIAL_WALLET_BALANCE,
+                },
+                update: {},
+            });
+            await this.prisma.walletTransaction.create({
+                data: {
+                    walletId: (await this.prisma.wallet.findUnique({ where: { userId } })).id,
+                    amount: INITIAL_WALLET_BALANCE,
+                    type: 'CREDIT',
+                    description: 'Saldo uji coba awal — selamat datang di Bantuin! 🎉',
+                },
+            });
+            this.logger.log(`[WALLET] Saldo awal Rp ${INITIAL_WALLET_BALANCE.toLocaleString()} dibuat untuk userId=${userId}`);
+        }
+        catch (err) {
+            this.logger.error(`[WALLET] Gagal buat wallet untuk userId=${userId}: ${err}`);
+        }
     }
     async register(dto) {
         const existing = await this.usersService.findByEmail(dto.email);
@@ -42,6 +69,7 @@ let AuthService = AuthService_1 = class AuthService {
             name: dto.name,
         });
         this.logger.log(`[REGISTER] Berhasil: ${user.email} (id: ${user.id}) | hash_prefix: ${hashedPassword.substring(0, 10)}...`);
+        await this.createInitialWallet(user.id);
         return this.generateTokenResponse(user);
     }
     async login(dto) {
@@ -102,6 +130,7 @@ let AuthService = AuthService_1 = class AuthService {
                     photoUrl: googlePayload.photoUrl ?? undefined,
                 });
                 this.logger.log(`[GOOGLE] User baru: ${user.email} (id: ${user.id}) | photo: ${!!googlePayload.photoUrl}`);
+                await this.createInitialWallet(user.id);
             }
         }
         else {
@@ -126,6 +155,7 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [users_service_1.UsersService,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        prisma_service_1.PrismaService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

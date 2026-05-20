@@ -2,11 +2,14 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterMitraDto } from './dto/register-mitra.dto';
-import { MitraRegistration, MitraProfile, User } from '@prisma/client';
+import { CreateMitraServiceDto } from './dto/create-mitra-service.dto';
+import { UpdateMitraServiceDto } from './dto/update-mitra-service.dto';
+import { MitraRegistration, MitraProfile, MitraService as PrismaMitraService, User } from '@prisma/client';
 
 // Status pendaftaran mitra — harus konsisten dengan schema.prisma
 export const RegistrationStatus = {
@@ -136,7 +139,16 @@ export class MitraService {
     const [profiles, total] = await Promise.all([
       this.prisma.mitraProfile.findMany({
         where: whereClause,
-        include: { user: true },
+        include: {
+          user: {
+            include: {
+              mitraServices: {
+                where: { isActive: true },
+                orderBy: { createdAt: 'asc' },
+              },
+            },
+          },
+        },
         orderBy: [
           { isOnline: 'desc' },
           { rating: 'desc' },
@@ -159,7 +171,15 @@ export class MitraService {
   async getMitraById(mitraUserId: number): Promise<object> {
     const profile = await this.prisma.mitraProfile.findUnique({
       where: { userId: mitraUserId },
-      include: { user: true },
+      include: {
+        user: {
+          include: {
+            mitraServices: {
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        },
+      },
     });
 
     if (!profile) throw new NotFoundException('Profil mitra tidak ditemukan');
@@ -253,6 +273,9 @@ export class MitraService {
       ? profile.category.split(',').map((c) => c.trim()).filter(Boolean)
       : [];
 
+    // Services dari relasi user.mitraServices (jika di-include)
+    const services = ((profile.user as any).mitraServices ?? []) as PrismaMitraService[];
+
     return {
       id: profile.userId.toString(),
       user_id: profile.userId.toString(),
@@ -275,6 +298,104 @@ export class MitraService {
       longitude: profile.longitude ?? null,
       distance_km: null,
       portfolio_urls: [],
+      // Array jasa mitra — kosong jika tidak di-include
+      services: services.map((s) => this.formatService(s)),
     };
+  }
+
+  formatService(s: PrismaMitraService): object {
+    return {
+      id: s.id,
+      category_id: s.categoryId,
+      title: s.title,
+      description: s.description,
+      price: s.price,
+      price_unit: s.priceUnit,
+      is_active: s.isActive,
+      created_at: s.createdAt.toISOString(),
+    };
+  }
+
+  // ── MitraService CRUD ─────────────────────────────────────────────────────
+
+  async getMyServices(userId: number): Promise<PrismaMitraService[]> {
+    return this.prisma.mitraService.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async createService(userId: number, dto: CreateMitraServiceDto): Promise<PrismaMitraService> {
+    // Pastikan user adalah mitra aktif
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.isMitra) throw new ForbiddenException('Hanya mitra aktif yang bisa menambah jasa');
+
+    const service = await this.prisma.mitraService.create({
+      data: {
+        userId,
+        categoryId: dto.categoryId,
+        title: dto.title,
+        description: dto.description,
+        price: dto.price,
+        priceUnit: dto.priceUnit ?? 'jam',
+        isActive: dto.isActive ?? true,
+      },
+    });
+
+    // Update category di MitraProfile agar include kategori baru
+    await this._syncProfileCategory(userId);
+
+    this.logger.log(`[MITRA] Jasa baru: userId=${userId} title="${dto.title}" category=${dto.categoryId}`);
+    return service;
+  }
+
+  async updateService(
+    serviceId: number,
+    userId: number,
+    dto: UpdateMitraServiceDto,
+  ): Promise<PrismaMitraService> {
+    const service = await this.prisma.mitraService.findUnique({ where: { id: serviceId } });
+    if (!service) throw new NotFoundException('Jasa tidak ditemukan');
+    if (service.userId !== userId) throw new ForbiddenException('Bukan jasamu');
+
+    const updated = await this.prisma.mitraService.update({
+      where: { id: serviceId },
+      data: {
+        ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.price !== undefined && { price: dto.price }),
+        ...(dto.priceUnit !== undefined && { priceUnit: dto.priceUnit }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+    });
+
+    if (dto.categoryId !== undefined) {
+      await this._syncProfileCategory(userId);
+    }
+
+    return updated;
+  }
+
+  async deleteService(serviceId: number, userId: number): Promise<void> {
+    const service = await this.prisma.mitraService.findUnique({ where: { id: serviceId } });
+    if (!service) throw new NotFoundException('Jasa tidak ditemukan');
+    if (service.userId !== userId) throw new ForbiddenException('Bukan jasamu');
+
+    await this.prisma.mitraService.delete({ where: { id: serviceId } });
+    await this._syncProfileCategory(userId);
+  }
+
+  /** Sinkronisasi field category di MitraProfile dari daftar jasa aktif */
+  private async _syncProfileCategory(userId: number): Promise<void> {
+    const services = await this.prisma.mitraService.findMany({
+      where: { userId },
+      select: { categoryId: true },
+    });
+    const uniqueCategories = [...new Set(services.map((s) => s.categoryId))];
+    await this.prisma.mitraProfile.updateMany({
+      where: { userId },
+      data: { category: uniqueCategories.join(',') },
+    });
   }
 }

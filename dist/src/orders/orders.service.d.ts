@@ -32,6 +32,9 @@ export declare class OrdersService {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
     getOrdersByUser(userId: number): Promise<{
         id: number;
@@ -55,6 +58,9 @@ export declare class OrdersService {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }[]>;
     getOrdersByMitra(mitraId: number): Promise<{
         id: number;
@@ -78,6 +84,9 @@ export declare class OrdersService {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }[]>;
     getOrderById(orderId: number, requesterId: number): Promise<{
         id: number;
@@ -101,6 +110,9 @@ export declare class OrdersService {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
     updateOrderStatus(orderId: number, mitraId: number, dto: UpdateOrderStatusDto): Promise<{
         id: number;
@@ -124,6 +136,9 @@ export declare class OrdersService {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
     cancelOrder(orderId: number, userId: number): Promise<{
         id: number;
@@ -147,6 +162,61 @@ export declare class OrdersService {
         accepted_at: Date;
         completed_at: Date;
         is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
+    }>;
+    requestCancellation(orderId: number, userId: number, reason?: string): Promise<{
+        id: number;
+        user_id: number;
+        mitra_id: number;
+        mitra_name: string;
+        mitra_avatar_url: string;
+        customer_name: string;
+        category_id: string;
+        category_name: string;
+        status: string;
+        item_description: string;
+        store_name: string;
+        notes: string;
+        photo_url: string;
+        item_budget: number;
+        service_fee: number;
+        platform_fee: number;
+        total_amount: number;
+        created_at: Date;
+        accepted_at: Date;
+        completed_at: Date;
+        is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
+    }>;
+    respondCancellation(orderId: number, mitraId: number, approve: boolean): Promise<{
+        id: number;
+        user_id: number;
+        mitra_id: number;
+        mitra_name: string;
+        mitra_avatar_url: string;
+        customer_name: string;
+        category_id: string;
+        category_name: string;
+        status: string;
+        item_description: string;
+        store_name: string;
+        notes: string;
+        photo_url: string;
+        item_budget: number;
+        service_fee: number;
+        platform_fee: number;
+        total_amount: number;
+        created_at: Date;
+        accepted_at: Date;
+        completed_at: Date;
+        is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
     private creditMitraWallet;
     getWallet(userId: number): Promise<{
@@ -159,5 +229,35 @@ export declare class OrdersService {
             order_id: number;
             created_at: Date;
         }[];
+    }>;
+    getUserWallet(userId: number): Promise<{
+        balance: number;
+    }>;
+    withdrawWallet(userId: number, amount: number): Promise<object>;
+    cancelOrderWithRefund(orderId: number, userId: number, skipStatusCheck?: boolean): Promise<{
+        id: number;
+        user_id: number;
+        mitra_id: number;
+        mitra_name: string;
+        mitra_avatar_url: string;
+        customer_name: string;
+        category_id: string;
+        category_name: string;
+        status: string;
+        item_description: string;
+        store_name: string;
+        notes: string;
+        photo_url: string;
+        item_budget: number;
+        service_fee: number;
+        platform_fee: number;
+        total_amount: number;
+        created_at: Date;
+        accepted_at: Date;
+        completed_at: Date;
+        is_reviewed: boolean;
+        cancellation_status: any;
+        cancellation_reason: any;
+        cancellation_requested_at: any;
     }>;
 }

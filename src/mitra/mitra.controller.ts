@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -16,6 +17,8 @@ import {
 import { MitraService } from './mitra.service';
 import { RegisterMitraDto } from './dto/register-mitra.dto';
 import { UpdateMitraProfileDto } from './dto/update-mitra-profile.dto';
+import { CreateMitraServiceDto } from './dto/create-mitra-service.dto';
+import { UpdateMitraServiceDto } from './dto/update-mitra-service.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
@@ -138,5 +141,55 @@ export class MitraController {
   @UseGuards(OptionalJwtAuthGuard)
   async getMitraById(@Param('id', ParseIntPipe) id: number) {
     return this.mitraService.getMitraById(id);
+  }
+
+  // ── GET /api/mitra/me/services — Daftar jasa milik mitra ─────────────────
+  @Get('me/services')
+  @UseGuards(JwtAuthGuard)
+  async getMyServices(@Request() req: AuthenticatedRequest) {
+    const services = await this.mitraService.getMyServices(req.user.id);
+    return { data: services.map((s) => this.mitraService.formatService(s)) };
+  }
+
+  // ── POST /api/mitra/me/services — Tambah jasa baru ───────────────────────
+  @Post('me/services')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async createService(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: CreateMitraServiceDto,
+  ) {
+    const service = await this.mitraService.createService(req.user.id, dto);
+    return {
+      message: 'Jasa berhasil ditambahkan.',
+      data: this.mitraService.formatService(service),
+    };
+  }
+
+  // ── PATCH /api/mitra/me/services/:id — Update jasa ───────────────────────
+  @Patch('me/services/:id')
+  @UseGuards(JwtAuthGuard)
+  async updateService(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: UpdateMitraServiceDto,
+  ) {
+    const service = await this.mitraService.updateService(id, req.user.id, dto);
+    return {
+      message: 'Jasa berhasil diperbarui.',
+      data: this.mitraService.formatService(service),
+    };
+  }
+
+  // ── DELETE /api/mitra/me/services/:id — Hapus jasa ───────────────────────
+  @Delete('me/services/:id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteService(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    await this.mitraService.deleteService(id, req.user.id);
+    return { message: 'Jasa berhasil dihapus.' };
   }
 }

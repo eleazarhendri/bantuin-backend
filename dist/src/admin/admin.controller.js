@@ -52,6 +52,13 @@ let AdminController = class AdminController {
             data: result,
         };
     }
+    async resetApplicationForReview(id, dto, req) {
+        const result = await this.adminService.resetRegistrationForReview(id, req.user.id, dto.adminNote);
+        return {
+            message: `Pendaftaran ID ${id} direset ke PENDING untuk ditinjau ulang.`,
+            data: result,
+        };
+    }
     async getStats() {
         return this.adminService.getRegistrationStats();
     }
@@ -102,6 +109,16 @@ __decorate([
     __metadata("design:paramtypes", [Number, review_registration_dto_1.RejectRegistrationDto, Object]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "rejectApplication", null);
+__decorate([
+    (0, common_1.Put)('mitra-applications/:id/reset-review'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, review_registration_dto_1.RejectRegistrationDto, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "resetApplicationForReview", null);
 __decorate([
     (0, common_1.Get)('stats'),
     __metadata("design:type", Function),

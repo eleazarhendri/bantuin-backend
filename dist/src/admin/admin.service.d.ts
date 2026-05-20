@@ -14,6 +14,7 @@ export declare class AdminService {
         user: User;
     }>;
     rejectRegistration(registrationId: number, adminId: number, adminNote?: string): Promise<MitraRegistration>;
+    resetRegistrationForReview(registrationId: number, adminId: number, adminNote?: string): Promise<MitraRegistration>;
     getRegistrationStats(): Promise<{
         pending: number;
         approved: number;

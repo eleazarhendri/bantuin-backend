@@ -29,5 +29,6 @@ export declare class AuthController {
         photoUrl: string;
         role: string;
         isMitra: boolean;
+        hasPassword: boolean;
     }>;
 }

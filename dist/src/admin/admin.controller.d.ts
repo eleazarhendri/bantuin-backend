@@ -31,6 +31,27 @@ export declare class AdminController {
             createdAt: Date;
             updatedAt: Date;
             userId: number;
+            latitude: number | null;
+            longitude: number | null;
+            status: string;
+            nik: string;
+            ktpUrl: string;
+            selfieUrl: string;
+            serviceCategory: string;
+            experience: string;
+            adminNote: string | null;
+            reviewedBy: number | null;
+        };
+    }>;
+    resetApplicationForReview(id: number, dto: RejectRegistrationDto, req: AuthenticatedRequest): Promise<{
+        message: string;
+        data: {
+            id: number;
+            createdAt: Date;
+            updatedAt: Date;
+            userId: number;
+            latitude: number | null;
+            longitude: number | null;
             status: string;
             nik: string;
             ktpUrl: string;

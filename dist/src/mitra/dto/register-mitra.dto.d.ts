@@ -4,4 +4,6 @@ export declare class RegisterMitraDto {
     selfieUrl: string;
     serviceCategory: string;
     experience: string;
+    latitude?: number;
+    longitude?: number;
 }
