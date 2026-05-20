@@ -166,4 +166,42 @@ export class AdminController {
   async getStats() {
     return this.adminService.getRegistrationStats();
   }
+
+  // ── GET /api/admin/overview — Dashboard overview ──────────────────────────
+  @Get('overview')
+  async getOverview() {
+    return this.adminService.getDashboardOverview();
+  }
+
+  // ── GET /api/admin/users — Semua user ─────────────────────────────────────
+  @Get('users')
+  async getAllUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getAllUsers(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+    );
+  }
+
+  // ── GET /api/admin/mitras — Semua mitra aktif ─────────────────────────────
+  @Get('mitras')
+  async getAllMitras() {
+    return this.adminService.getAllActiveMitras();
+  }
+
+  // ── GET /api/admin/orders — Semua pesanan ─────────────────────────────────
+  @Get('orders')
+  async getAllOrders(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.getAllOrders(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+      status,
+    );
+  }
 }

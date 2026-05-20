@@ -189,10 +189,6 @@ export class AdminService {
 
   // ── Statistik ──────────────────────────────────────────────────────────────
 
-  /**
-   * Ringkasan jumlah pendaftaran per status.
-   * Berguna untuk dashboard admin.
-   */
   async getRegistrationStats(): Promise<{
     pending: number;
     approved: number;
@@ -200,22 +196,159 @@ export class AdminService {
     total: number;
   }> {
     const [pending, approved, rejected] = await Promise.all([
-      this.prisma.mitraRegistration.count({
-        where: { status: RegistrationStatus.PENDING },
+      this.prisma.mitraRegistration.count({ where: { status: RegistrationStatus.PENDING } }),
+      this.prisma.mitraRegistration.count({ where: { status: RegistrationStatus.APPROVED } }),
+      this.prisma.mitraRegistration.count({ where: { status: RegistrationStatus.REJECTED } }),
+    ]);
+    return { pending, approved, rejected, total: pending + approved + rejected };
+  }
+
+  // ── Monitoring: Semua User ─────────────────────────────────────────────────
+
+  async getAllUsers(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { role: { not: 'ADMIN' } },
+        select: {
+          id: true, email: true, name: true, photoUrl: true,
+          role: true, isMitra: true, createdAt: true,
+          _count: { select: { ordersAsUser: true, ordersAsMitra: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
       }),
-      this.prisma.mitraRegistration.count({
-        where: { status: RegistrationStatus.APPROVED },
+      this.prisma.user.count({ where: { role: { not: 'ADMIN' } } }),
+    ]);
+
+    return {
+      data: users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        name: u.name ?? '',
+        photo_url: u.photoUrl ?? null,
+        role: u.role,
+        is_mitra: u.isMitra,
+        created_at: u.createdAt,
+        total_orders_as_user: u._count.ordersAsUser,
+        total_orders_as_mitra: u._count.ordersAsMitra,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // ── Monitoring: Semua Mitra Aktif ──────────────────────────────────────────
+
+  async getAllActiveMitras() {
+    const mitras = await this.prisma.mitraProfile.findMany({
+      include: {
+        user: { select: { id: true, name: true, email: true, photoUrl: true, createdAt: true } },
+      },
+      orderBy: { totalOrders: 'desc' },
+    });
+
+    return mitras.map((m) => ({
+      id: m.userId,
+      name: m.user.name ?? '',
+      email: m.user.email,
+      photo_url: m.user.photoUrl ?? null,
+      category: m.category,
+      rating: m.rating,
+      total_reviews: m.totalReviews,
+      total_orders: m.totalOrders,
+      is_online: m.isOnline,
+      is_verified: m.isVerified,
+      campus: m.campus,
+      domicile: m.domicile,
+      joined_at: m.user.createdAt,
+    }));
+  }
+
+  // ── Monitoring: Semua Pesanan ──────────────────────────────────────────────
+
+  async getAllOrders(page = 1, limit = 20, status?: string) {
+    const skip = (page - 1) * limit;
+    const where = status ? { status } : {};
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          mitra: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
       }),
-      this.prisma.mitraRegistration.count({
-        where: { status: RegistrationStatus.REJECTED },
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      data: orders.map((o) => ({
+        id: o.id,
+        user_name: o.user.name ?? '',
+        user_email: o.user.email,
+        mitra_name: o.mitra.name ?? '',
+        mitra_email: o.mitra.email,
+        category_name: o.categoryName,
+        status: o.status,
+        total_amount: o.totalAmount,
+        created_at: o.createdAt,
+        completed_at: o.completedAt ?? null,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // ── Monitoring: Dashboard Overview ────────────────────────────────────────
+
+  async getDashboardOverview() {
+    const [
+      totalUsers, totalMitras, totalOrders,
+      pendingOrders, doneOrders, totalRevenue,
+      recentOrders,
+    ] = await Promise.all([
+      this.prisma.user.count({ where: { role: 'USER' } }),
+      this.prisma.user.count({ where: { isMitra: true } }),
+      this.prisma.order.count(),
+      this.prisma.order.count({ where: { status: 'pending' } }),
+      this.prisma.order.count({ where: { status: 'done' } }),
+      this.prisma.order.aggregate({
+        where: { status: 'done' },
+        _sum: { platformFee: true },
+      }),
+      this.prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { name: true } },
+          mitra: { select: { name: true } },
+        },
       }),
     ]);
 
     return {
-      pending,
-      approved,
-      rejected,
-      total: pending + approved + rejected,
+      total_users: totalUsers,
+      total_mitras: totalMitras,
+      total_orders: totalOrders,
+      pending_orders: pendingOrders,
+      done_orders: doneOrders,
+      total_platform_revenue: totalRevenue._sum.platformFee ?? 0,
+      recent_orders: recentOrders.map((o) => ({
+        id: o.id,
+        user_name: o.user.name ?? '',
+        mitra_name: o.mitra.name ?? '',
+        category: o.categoryName,
+        status: o.status,
+        amount: o.totalAmount,
+        created_at: o.createdAt,
+      })),
     };
   }
 }
