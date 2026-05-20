@@ -11,7 +11,7 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
-  Optional,
+  BadRequestException,
 } from '@nestjs/common';
 import { MitraService } from './mitra.service';
 import { RegisterMitraDto } from './dto/register-mitra.dto';
@@ -111,6 +111,26 @@ export class MitraController {
     @Body('isOnline') isOnline: boolean,
   ) {
     return this.mitraService.setOnlineStatus(req.user.id, isOnline);
+  }
+
+  // ── PATCH /api/mitra/me/location — Update koordinat lokasi mitra ──────────
+  @Patch('me/location')
+  @UseGuards(JwtAuthGuard)
+  async updateLocation(
+    @Request() req: AuthenticatedRequest,
+    @Body('latitude') latitude: number,
+    @Body('longitude') longitude: number,
+  ) {
+    if (latitude == null || longitude == null) {
+      throw new BadRequestException('latitude dan longitude wajib diisi');
+    }
+    if (latitude < -90 || latitude > 90) {
+      throw new BadRequestException('latitude harus antara -90 dan 90');
+    }
+    if (longitude < -180 || longitude > 180) {
+      throw new BadRequestException('longitude harus antara -180 dan 180');
+    }
+    return this.mitraService.updateMitraLocation(req.user.id, latitude, longitude);
   }
 
   // ── GET /api/mitra/:id — Profil mitra by userId ───────────────────────────

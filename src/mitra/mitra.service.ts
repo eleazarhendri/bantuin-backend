@@ -218,6 +218,32 @@ export class MitraService {
     return this.formatMitraProfile(updated as MitraWithUser);
   }
 
+  // ── Update Lokasi Mitra ────────────────────────────────────────────────────
+
+  async updateMitraLocation(
+    userId: number,
+    latitude: number,
+    longitude: number,
+  ): Promise<object> {
+    const profile = await this.prisma.mitraProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) throw new NotFoundException('Profil mitra tidak ditemukan');
+
+    const updated = await this.prisma.mitraProfile.update({
+      where: { userId },
+      data: { latitude, longitude },
+      include: { user: true },
+    });
+
+    this.logger.log(
+      `[MITRA] Lokasi diperbarui: userId=${userId} lat=${latitude} lng=${longitude}`,
+    );
+
+    return this.formatMitraProfile(updated as MitraWithUser);
+  }
+
   // ── Helper: Format MitraProfile untuk response ────────────────────────────
 
   formatMitraProfile(profile: MitraWithUser): object {
@@ -243,10 +269,8 @@ export class MitraService {
       is_online: profile.isOnline,
       phone_number: profile.phoneNumber,
       joined_at: profile.createdAt.toISOString(),
-      // latitude & longitude tidak disimpan di DB untuk privasi
-      // bisa ditambahkan nanti jika dibutuhkan
-      latitude: null,
-      longitude: null,
+      latitude: profile.latitude ?? null,
+      longitude: profile.longitude ?? null,
       distance_km: null,
       portfolio_urls: [],
     };
