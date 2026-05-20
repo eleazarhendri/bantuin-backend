@@ -16,7 +16,7 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { User } from '@prisma/client';
 
 // Saldo awal uji coba untuk setiap user baru
-const INITIAL_WALLET_BALANCE = 1_000_000;
+const INITIAL_WALLET_BALANCE = 20_000;
 
 @Injectable()
 export class AuthService {

@@ -21,6 +21,14 @@ const MITRA_ALLOWED_STATUSES = [
 
 const USER_CANCEL_ALLOWED = ['pending'];
 
+// Status yang membolehkan user request pembatalan (setelah accepted)
+const USER_CANCEL_REQUEST_ALLOWED = [
+  'accepted', 'shopping', 'on_the_way', 'diagnosis', 'in_progress', 'ready_pickup',
+];
+
+// Batas waktu mitra merespons request pembatalan (5 menit)
+const CANCEL_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -67,6 +75,9 @@ export class OrdersService {
       accepted_at: order.acceptedAt ?? null,
       completed_at: order.completedAt ?? null,
       is_reviewed: order.isReviewed,
+      cancellation_status: (order as any).cancellationStatus ?? null,
+      cancellation_reason: (order as any).cancellationReason ?? null,
+      cancellation_requested_at: (order as any).cancellationRequestedAt ?? null,
     };
   }
 
@@ -275,6 +286,128 @@ export class OrdersService {
     return this.cancelOrderWithRefund(orderId, userId);
   }
 
+  // ── Request Pembatalan (User — setelah accepted) ───────────────────────────
+
+  /**
+   * User mengajukan permintaan pembatalan setelah pesanan diterima mitra.
+   * Mitra punya 5 menit untuk merespons.
+   * Jika tidak direspons dalam 5 menit → otomatis TIDAK bisa dibatalkan.
+   */
+  async requestCancellation(orderId: number, userId: number, reason?: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+
+    if (!order) throw new NotFoundException('Pesanan tidak ditemukan');
+    if (order.userId !== userId) throw new ForbiddenException('Bukan pesananmu');
+
+    if (!USER_CANCEL_REQUEST_ALLOWED.includes(order.status)) {
+      throw new BadRequestException(
+        'Pembatalan hanya bisa diajukan saat pesanan sedang diproses mitra.',
+      );
+    }
+
+    const cancellationStatus = (order as any).cancellationStatus;
+    if (cancellationStatus === 'requested') {
+      throw new BadRequestException('Permintaan pembatalan sudah diajukan. Tunggu respons mitra.');
+    }
+
+    const now = new Date();
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        cancellationStatus: 'requested',
+        cancellationReason: reason ?? null,
+        cancellationRequestedAt: now,
+      } as any,
+    });
+
+    const formatted = await this.formatOrder(updated);
+
+    // Notifikasi real-time ke mitra
+    this.gateway.notifyOrderStatusUpdated(order.userId, order.mitraId, formatted);
+
+    // Notifikasi persisten ke mitra
+    const userRecord = await this.prisma.user.findUnique({ where: { id: userId } });
+    await this.notificationsService.notifyOrderStatusUpdate({
+      userId: order.mitraId,
+      orderId,
+      mitraName: userRecord?.name ?? 'User',
+      newStatus: 'cancellation_requested',
+    });
+
+    this.logger.log(
+      `[ORDER] Cancellation requested: id=${orderId} userId=${userId} reason="${reason}"`,
+    );
+
+    return formatted;
+  }
+
+  /**
+   * Mitra merespons permintaan pembatalan dari user.
+   * - approve → pesanan dibatalkan + refund ke user
+   * - reject  → pesanan lanjut, cancellationStatus = 'rejected'
+   *
+   * Hanya bisa direspons dalam 5 menit sejak request.
+   * Setelah 5 menit → otomatis dianggap ditolak (tidak bisa dibatalkan).
+   */
+  async respondCancellation(
+    orderId: number,
+    mitraId: number,
+    approve: boolean,
+  ) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+
+    if (!order) throw new NotFoundException('Pesanan tidak ditemukan');
+    if (order.mitraId !== mitraId) throw new ForbiddenException('Bukan pesananmu');
+
+    const cancellationStatus = (order as any).cancellationStatus;
+    const cancellationRequestedAt = (order as any).cancellationRequestedAt as Date | null;
+
+    if (cancellationStatus !== 'requested') {
+      throw new BadRequestException('Tidak ada permintaan pembatalan aktif untuk pesanan ini.');
+    }
+
+    // Cek timeout 5 menit
+    if (cancellationRequestedAt) {
+      const elapsed = Date.now() - cancellationRequestedAt.getTime();
+      if (elapsed > CANCEL_REQUEST_TIMEOUT_MS) {
+        // Timeout — otomatis reject, update status
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: { cancellationStatus: 'expired' } as any,
+        });
+        throw new BadRequestException(
+          'Waktu respons pembatalan sudah habis (5 menit). Pesanan tidak dapat dibatalkan.',
+        );
+      }
+    }
+
+    if (approve) {
+      // Approve → batalkan pesanan + refund
+      const updated = await this.cancelOrderWithRefund(orderId, order.userId, true);
+
+      // Update cancellationStatus ke approved
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { cancellationStatus: 'approved' } as any,
+      });
+
+      this.logger.log(`[ORDER] Cancellation APPROVED by mitra=${mitraId} for order=${orderId}`);
+      return updated;
+    } else {
+      // Reject → lanjutkan pesanan
+      const updated = await this.prisma.order.update({
+        where: { id: orderId },
+        data: { cancellationStatus: 'rejected' } as any,
+      });
+
+      const formatted = await this.formatOrder(updated);
+      this.gateway.notifyOrderStatusUpdated(order.userId, mitraId, formatted);
+
+      this.logger.log(`[ORDER] Cancellation REJECTED by mitra=${mitraId} for order=${orderId}`);
+      return formatted;
+    }
+  }
+
   // ── Wallet: Kredit Mitra ───────────────────────────────────────────────────
 
   private async creditMitraWallet(
@@ -321,7 +454,7 @@ export class OrdersService {
       include: {
         transactions: {
           orderBy: { createdAt: 'desc' },
-          take: 20,
+          take: 100, // ambil 100 transaksi untuk grafik 30 hari
         },
       },
     });
@@ -355,9 +488,64 @@ export class OrdersService {
     };
   }
 
+  // ── Withdraw Saldo Mitra ───────────────────────────────────────────────────
+
+  async withdrawWallet(userId: number, amount: number): Promise<object> {
+    if (amount <= 0) {
+      throw new BadRequestException('Jumlah penarikan harus lebih dari 0');
+    }
+
+    const wallet = await this.prisma.wallet.findUnique({
+      where: { userId },
+    });
+
+    if (!wallet) {
+      throw new BadRequestException('Wallet tidak ditemukan');
+    }
+
+    if (wallet.balance < amount) {
+      throw new BadRequestException(
+        `Saldo tidak cukup. Saldo tersedia: Rp ${Math.floor(wallet.balance).toLocaleString('id-ID')}`,
+      );
+    }
+
+    const MIN_WITHDRAW = 10_000;
+    if (amount < MIN_WITHDRAW) {
+      throw new BadRequestException(
+        `Minimum penarikan adalah Rp ${MIN_WITHDRAW.toLocaleString('id-ID')}`,
+      );
+    }
+
+    const [updatedWallet, tx] = await this.prisma.$transaction([
+      this.prisma.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { decrement: amount } },
+      }),
+      this.prisma.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          amount,
+          type: 'DEBIT',
+          description: `Penarikan saldo ke rekening bank`,
+        },
+      }),
+    ]);
+
+    this.logger.log(
+      `[WALLET] Withdraw userId=${userId} -${amount} | sisa=${updatedWallet.balance}`,
+    );
+
+    return {
+      success: true,
+      withdrawn: amount,
+      new_balance: updatedWallet.balance,
+      transaction_id: tx.id,
+    };
+  }
+
   // ── Cancel Order (User) dengan refund wallet ───────────────────────────────
 
-  async cancelOrderWithRefund(orderId: number, userId: number) {
+  async cancelOrderWithRefund(orderId: number, userId: number, skipStatusCheck = false) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -366,7 +554,7 @@ export class OrdersService {
     if (order.userId !== userId) {
       throw new ForbiddenException('Kamu bukan pemilik pesanan ini');
     }
-    if (!USER_CANCEL_ALLOWED.includes(order.status)) {
+    if (!skipStatusCheck && !USER_CANCEL_ALLOWED.includes(order.status)) {
       throw new BadRequestException(
         'Pesanan hanya bisa dibatalkan saat masih pending',
       );

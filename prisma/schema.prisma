@@ -105,6 +105,10 @@ model MitraRegistration {
   serviceCategory String
   experience      String
 
+  /// Koordinat lokasi toko/area layanan (diisi saat pendaftaran, opsional)
+  latitude        Float?
+  longitude       Float?
+
   /// Status review admin: "PENDING" | "APPROVED" | "REJECTED"
   status          String   @default("PENDING")
 
@@ -156,6 +160,12 @@ model Order {
   acceptedAt      DateTime?
   completedAt     DateTime?
   cancelledAt     DateTime?
+
+  /// Pembatalan setelah accepted: user request → mitra approve/reject dalam 5 menit
+  /// Status: null | "requested" | "approved" | "rejected"
+  cancellationStatus    String?
+  cancellationReason    String?
+  cancellationRequestedAt DateTime?
 
   /// Apakah user sudah memberi ulasan
   isReviewed      Boolean  @default(false)

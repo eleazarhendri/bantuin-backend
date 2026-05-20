@@ -122,6 +122,9 @@ export class AuthController {
       photoUrl: user.photoUrl,
       role: user.role,
       isMitra: user.isMitra,
+      // hasPassword: true jika akun daftar via email/password
+      // false jika akun Google-only (tidak punya password)
+      hasPassword: !!user.password,
     };
   }
 }

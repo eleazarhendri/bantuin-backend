@@ -54,6 +54,8 @@ export class MitraService {
         selfieUrl: dto.selfieUrl,
         serviceCategory: dto.serviceCategory,
         experience: dto.experience,
+        ...(dto.latitude !== undefined && { latitude: dto.latitude }),
+        ...(dto.longitude !== undefined && { longitude: dto.longitude }),
         status: RegistrationStatus.PENDING,
       },
     });

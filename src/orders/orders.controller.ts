@@ -72,7 +72,7 @@ export class OrdersController {
     return this.ordersService.updateOrderStatus(id, req.user.id, dto);
   }
 
-  // ── DELETE /orders/:id — User batalkan pesanan ────────────────────────────
+  // ── DELETE /orders/:id — User batalkan pesanan (hanya saat pending) ─────────
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   cancelOrder(
@@ -80,5 +80,37 @@ export class OrdersController {
     @Request() req,
   ) {
     return this.ordersService.cancelOrder(id, req.user.id);
+  }
+
+  // ── POST /orders/:id/cancel-request — User ajukan pembatalan (setelah accepted) ──
+  @Post(':id/cancel-request')
+  @HttpCode(HttpStatus.OK)
+  requestCancellation(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+    @Body('reason') reason?: string,
+  ) {
+    return this.ordersService.requestCancellation(id, req.user.id, reason);
+  }
+
+  // ── POST /orders/:id/cancel-respond — Mitra approve/reject pembatalan ────────
+  @Post(':id/cancel-respond')
+  @HttpCode(HttpStatus.OK)
+  respondCancellation(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+    @Body('approve') approve: boolean,
+  ) {
+    return this.ordersService.respondCancellation(id, req.user.id, approve);
+  }
+
+  // ── POST /orders/wallet/withdraw — Mitra tarik saldo ─────────────────────
+  @Post('wallet/withdraw')
+  @HttpCode(HttpStatus.OK)
+  withdrawWallet(
+    @Request() req,
+    @Body('amount') amount: number,
+  ) {
+    return this.ordersService.withdrawWallet(req.user.id, amount);
   }
 }

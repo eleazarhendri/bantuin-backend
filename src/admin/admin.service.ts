@@ -122,11 +122,17 @@ export class AdminService {
         domicile: '',      // mitra lengkapi nanti
         phoneNumber: '',   // mitra lengkapi nanti
         isVerified: true,  // sudah diverifikasi admin
+        // Salin koordinat lokasi dari registrasi jika ada
+        ...(registration.latitude !== null && { latitude: registration.latitude }),
+        ...(registration.longitude !== null && { longitude: registration.longitude }),
       },
       update: {
         // Jika sudah ada profil, update kategori & verifikasi saja
         category: registration.serviceCategory,
         isVerified: true,
+        // Update koordinat jika registrasi punya data lokasi
+        ...(registration.latitude !== null && { latitude: registration.latitude }),
+        ...(registration.longitude !== null && { longitude: registration.longitude }),
       },
     });
 
@@ -182,6 +188,53 @@ export class AdminService {
 
     this.logger.log(
       `[ADMIN] REJECT: registrationId=${registrationId} | userId=${registration.userId} | adminId=${adminId} | note="${adminNote}"`,
+    );
+
+    return updated;
+  }
+
+  // ── Reset Pendaftaran ke PENDING (Re-review) ──────────────────────────────
+
+  /**
+   * Admin mereset status pendaftaran mitra yang sudah APPROVED/REJECTED
+   * kembali ke PENDING agar bisa di-review ulang.
+   *
+   * Berguna saat admin ingin memeriksa ulang dokumen mitra yang sudah aktif.
+   * Jika status sebelumnya APPROVED, mitra tetap aktif (isMitra = true)
+   * sampai admin memutuskan approve/reject lagi.
+   */
+  async resetRegistrationForReview(
+    registrationId: number,
+    adminId: number,
+    adminNote?: string,
+  ): Promise<MitraRegistration> {
+    const registration = await this.prisma.mitraRegistration.findUnique({
+      where: { id: registrationId },
+    });
+
+    if (!registration) {
+      throw new NotFoundException(
+        `Pendaftaran dengan ID ${registrationId} tidak ditemukan`,
+      );
+    }
+
+    if (registration.status === RegistrationStatus.PENDING) {
+      throw new BadRequestException(
+        'Pendaftaran ini sudah berstatus PENDING — tidak perlu direset.',
+      );
+    }
+
+    const updated = await this.prisma.mitraRegistration.update({
+      where: { id: registrationId },
+      data: {
+        status: RegistrationStatus.PENDING,
+        reviewedBy: adminId,
+        adminNote: adminNote ?? 'Dokumen diminta untuk ditinjau ulang oleh admin.',
+      },
+    });
+
+    this.logger.log(
+      `[ADMIN] RESET-TO-PENDING: registrationId=${registrationId} | userId=${registration.userId} | adminId=${adminId}`,
     );
 
     return updated;

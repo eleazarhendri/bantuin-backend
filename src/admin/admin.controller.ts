@@ -155,6 +155,40 @@ export class AdminController {
   }
 
   /**
+   * PUT /api/admin/mitra-applications/:id/reset-review
+   *
+   * Reset status pendaftaran mitra (APPROVED/REJECTED) kembali ke PENDING
+   * agar admin bisa memeriksa ulang dokumen.
+   *
+   * Request body (opsional):
+   * { "adminNote": "Mohon upload ulang foto KTP yang lebih jelas." }
+   *
+   * Response 200:
+   * {
+   *   "message": "Pendaftaran ID 1 direset ke PENDING untuk ditinjau ulang.",
+   *   "data": { "id": 1, "status": "PENDING", ... }
+   * }
+   */
+  @Put('mitra-applications/:id/reset-review')
+  @HttpCode(HttpStatus.OK)
+  async resetApplicationForReview(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RejectRegistrationDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const result = await this.adminService.resetRegistrationForReview(
+      id,
+      req.user.id,
+      dto.adminNote,
+    );
+
+    return {
+      message: `Pendaftaran ID ${id} direset ke PENDING untuk ditinjau ulang.`,
+      data: result,
+    };
+  }
+
+  /**
    * GET /api/admin/stats
    *
    * Statistik ringkasan pendaftaran untuk dashboard admin.
