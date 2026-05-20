@@ -5,6 +5,7 @@ import {
   IsNumber,
   Min,
   IsNotEmpty,
+  IsIn,
 } from 'class-validator';
 
 export class CreateOrderDto {
@@ -42,4 +43,12 @@ export class CreateOrderDto {
   @IsNumber()
   @Min(0)
   serviceFee: number;
+
+  /// Metode pembayaran: "wallet" | "cash" | "transfer"
+  @IsOptional()
+  @IsString()
+  @IsIn(['wallet', 'cash', 'transfer'], {
+    message: 'paymentMethod harus salah satu dari: wallet, cash, transfer',
+  })
+  paymentMethod?: string;
 }

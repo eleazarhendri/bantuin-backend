@@ -55,6 +55,18 @@ let AdminController = class AdminController {
     async getStats() {
         return this.adminService.getRegistrationStats();
     }
+    async getOverview() {
+        return this.adminService.getDashboardOverview();
+    }
+    async getAllUsers(page, limit) {
+        return this.adminService.getAllUsers(page ? parseInt(page, 10) : 1, limit ? parseInt(limit, 10) : 20);
+    }
+    async getAllMitras() {
+        return this.adminService.getAllActiveMitras();
+    }
+    async getAllOrders(page, limit, status) {
+        return this.adminService.getAllOrders(page ? parseInt(page, 10) : 1, limit ? parseInt(limit, 10) : 20, status);
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -96,6 +108,35 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Get)('overview'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getOverview", null);
+__decorate([
+    (0, common_1.Get)('users'),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAllUsers", null);
+__decorate([
+    (0, common_1.Get)('mitras'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAllMitras", null);
+__decorate([
+    (0, common_1.Get)('orders'),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('status')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAllOrders", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

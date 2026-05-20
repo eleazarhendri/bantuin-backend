@@ -6,30 +6,61 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client } from 'google-auth-library';
-// Import bcrypt dengan cara ini untuk menghindari masalah CommonJS/ESM interop
 import bcrypt = require('bcrypt');
 import { UsersService } from '../users/users.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { User } from '@prisma/client';
 
+// Saldo awal uji coba untuk setiap user baru
+const INITIAL_WALLET_BALANCE = 1_000_000;
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-
-  // Jumlah salt rounds untuk bcrypt — 12 adalah sweet spot keamanan vs performa
   private readonly BCRYPT_ROUNDS = 12;
-
-  // OAuth2Client untuk verifikasi Google ID Token
   private readonly googleClient: OAuth2Client;
 
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
   ) {
     this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  }
+
+  // ── Helper: buat wallet awal untuk user baru ───────────────────────────────
+
+  private async createInitialWallet(userId: number): Promise<void> {
+    try {
+      await this.prisma.wallet.upsert({
+        where: { userId },
+        create: {
+          userId,
+          balance: INITIAL_WALLET_BALANCE,
+        },
+        update: {}, // jangan update kalau sudah ada
+      });
+
+      await this.prisma.walletTransaction.create({
+        data: {
+          walletId: (await this.prisma.wallet.findUnique({ where: { userId } }))!.id,
+          amount: INITIAL_WALLET_BALANCE,
+          type: 'CREDIT',
+          description: 'Saldo uji coba awal — selamat datang di Bantuin! 🎉',
+        },
+      });
+
+      this.logger.log(
+        `[WALLET] Saldo awal Rp ${INITIAL_WALLET_BALANCE.toLocaleString()} dibuat untuk userId=${userId}`,
+      );
+    } catch (err) {
+      // Gagal buat wallet tidak boleh block register
+      this.logger.error(`[WALLET] Gagal buat wallet untuk userId=${userId}: ${err}`);
+    }
   }
 
   // ── Register dengan Email/Password ─────────────────────────────────────────
@@ -65,6 +96,9 @@ export class AuthService {
     this.logger.log(
       `[REGISTER] Berhasil: ${user.email} (id: ${user.id}) | hash_prefix: ${hashedPassword.substring(0, 10)}...`,
     );
+
+    // Buat wallet awal dengan saldo uji coba
+    await this.createInitialWallet(user.id);
 
     return this.generateTokenResponse(user);
   }
@@ -197,6 +231,8 @@ export class AuthService {
         this.logger.log(
           `[GOOGLE] User baru: ${user.email} (id: ${user.id}) | photo: ${!!googlePayload.photoUrl}`,
         );
+        // Buat wallet awal untuk user Google baru
+        await this.createInitialWallet(user.id);
       }
     } else {
       // User sudah ada via googleId — update foto jika berubah

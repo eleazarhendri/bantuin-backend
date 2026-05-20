@@ -18,7 +18,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:seed-mitra": "ts-node prisma/seed-mitra.ts"
+    "prisma:seed-mitra": "ts-node prisma/seed-mitra.ts",
+    "prisma:seed-finance": "ts-node prisma/seed-finance.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",

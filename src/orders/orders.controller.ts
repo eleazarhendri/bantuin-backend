@@ -47,6 +47,12 @@ export class OrdersController {
     return this.ordersService.getWallet(req.user.id);
   }
 
+  // ── GET /orders/user-wallet — Saldo user (untuk checkout) ─────────────────
+  @Get('user-wallet')
+  getUserWallet(@Request() req) {
+    return this.ordersService.getUserWallet(req.user.id);
+  }
+
   // ── GET /orders/:id — Detail pesanan ─────────────────────────────────────
   @Get(':id')
   getOrderById(

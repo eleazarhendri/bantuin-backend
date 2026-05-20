@@ -86,6 +86,41 @@ export class OrdersService {
     const platformFee = (dto.itemBudget + dto.serviceFee) * PLATFORM_COMMISSION;
     const totalAmount = dto.itemBudget + dto.serviceFee + platformFee;
 
+    // ── Cek & potong saldo user jika bayar via wallet ──────────────────────
+    if (dto.paymentMethod === 'wallet') {
+      const userWallet = await this.prisma.wallet.findUnique({
+        where: { userId },
+      });
+
+      const currentBalance = userWallet?.balance ?? 0;
+
+      if (currentBalance < totalAmount) {
+        throw new BadRequestException(
+          `Saldo tidak cukup. Saldo kamu: Rp ${Math.floor(currentBalance).toLocaleString('id-ID')}, dibutuhkan: Rp ${Math.floor(totalAmount).toLocaleString('id-ID')}`,
+        );
+      }
+
+      // Potong saldo user
+      await this.prisma.$transaction([
+        this.prisma.wallet.update({
+          where: { userId },
+          data: { balance: { decrement: totalAmount } },
+        }),
+        this.prisma.walletTransaction.create({
+          data: {
+            walletId: userWallet!.id,
+            amount: totalAmount,
+            type: 'DEBIT',
+            description: `Pembayaran pesanan ke ${mitra.name ?? 'Mitra'} - ${dto.categoryName}`,
+          },
+        }),
+      ]);
+
+      this.logger.log(
+        `[WALLET] Potong saldo user=${userId} -${totalAmount} untuk pesanan ke mitra=${dto.mitraId}`,
+      );
+    }
+
     const order = await this.prisma.order.create({
       data: {
         userId,
@@ -234,32 +269,10 @@ export class OrdersService {
     return formatted;
   }
 
-  // ── Cancel Order (User) ────────────────────────────────────────────────────
+  // ── Cancel Order (User) — dengan refund wallet otomatis ──────────────────
 
   async cancelOrder(orderId: number, userId: number) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-    });
-
-    if (!order) throw new NotFoundException('Pesanan tidak ditemukan');
-    if (order.userId !== userId) {
-      throw new ForbiddenException('Kamu bukan pemilik pesanan ini');
-    }
-    if (!USER_CANCEL_ALLOWED.includes(order.status)) {
-      throw new BadRequestException(
-        'Pesanan hanya bisa dibatalkan saat masih pending',
-      );
-    }
-
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: 'cancelled', cancelledAt: new Date() },
-    });
-
-    const formatted = await this.formatOrder(updated);
-    this.gateway.notifyOrderCancelled(userId, order.mitraId, formatted);
-
-    return formatted;
+    return this.cancelOrderWithRefund(orderId, userId);
   }
 
   // ── Wallet: Kredit Mitra ───────────────────────────────────────────────────
@@ -300,7 +313,7 @@ export class OrdersService {
     );
   }
 
-  // ── Get Wallet ─────────────────────────────────────────────────────────────
+  // ── Get Wallet (Mitra — saldo + riwayat lengkap) ──────────────────────────
 
   async getWallet(userId: number) {
     const wallet = await this.prisma.wallet.findUnique({
@@ -314,7 +327,6 @@ export class OrdersService {
     });
 
     if (!wallet) {
-      // Return wallet kosong jika belum ada
       return { balance: 0, transactions: [] };
     }
 
@@ -329,5 +341,85 @@ export class OrdersService {
         created_at: t.createdAt,
       })),
     };
+  }
+
+  // ── Get User Wallet (User — hanya saldo untuk checkout) ───────────────────
+
+  async getUserWallet(userId: number) {
+    const wallet = await this.prisma.wallet.findUnique({
+      where: { userId },
+    });
+
+    return {
+      balance: wallet?.balance ?? 0,
+    };
+  }
+
+  // ── Cancel Order (User) dengan refund wallet ───────────────────────────────
+
+  async cancelOrderWithRefund(orderId: number, userId: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) throw new NotFoundException('Pesanan tidak ditemukan');
+    if (order.userId !== userId) {
+      throw new ForbiddenException('Kamu bukan pemilik pesanan ini');
+    }
+    if (!USER_CANCEL_ALLOWED.includes(order.status)) {
+      throw new BadRequestException(
+        'Pesanan hanya bisa dibatalkan saat masih pending',
+      );
+    }
+
+    // Cek apakah ada transaksi DEBIT wallet untuk pesanan ini
+    const userWallet = await this.prisma.wallet.findUnique({
+      where: { userId },
+    });
+
+    if (userWallet) {
+      // Cari transaksi debit terkait pesanan ini (berdasarkan deskripsi)
+      // Refund total amount ke wallet user
+      const debitTx = await this.prisma.walletTransaction.findFirst({
+        where: {
+          walletId: userWallet.id,
+          type: 'DEBIT',
+          description: { contains: order.categoryName },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (debitTx) {
+        await this.prisma.$transaction([
+          this.prisma.wallet.update({
+            where: { id: userWallet.id },
+            data: { balance: { increment: order.totalAmount } },
+          }),
+          this.prisma.walletTransaction.create({
+            data: {
+              walletId: userWallet.id,
+              amount: order.totalAmount,
+              type: 'CREDIT',
+              description: `Refund pembatalan pesanan #${orderId} - ${order.categoryName}`,
+              orderId,
+            },
+          }),
+        ]);
+
+        this.logger.log(
+          `[WALLET] Refund user=${userId} +${order.totalAmount} dari pembatalan order=${orderId}`,
+        );
+      }
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'cancelled', cancelledAt: new Date() },
+    });
+
+    const formatted = await this.formatOrder(updated);
+    this.gateway.notifyOrderCancelled(userId, order.mitraId, formatted);
+
+    return formatted;
   }
 }

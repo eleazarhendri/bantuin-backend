@@ -16,6 +16,7 @@ class RegisterDto {
 exports.RegisterDto = RegisterDto;
 __decorate([
     (0, class_validator_1.IsEmail)({}, { message: 'Format email tidak valid' }),
+    (0, class_validator_1.Matches)(/\.ac\.id$/i, { message: 'Gunakan email kampus yang berakhiran .ac.id' }),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "email", void 0);
 __decorate([
