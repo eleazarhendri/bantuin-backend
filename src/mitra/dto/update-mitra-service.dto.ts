@@ -12,7 +12,7 @@ export class UpdateMitraServiceDto {
   @IsOptional()
   @IsString()
   @IsIn(
-    ['jastip', 'servis', 'les', 'beberes', 'desain', 'pindahan', 'joki', 'curhat'],
+    ['jastip', 'servis', 'les', 'beberes', 'desain', 'pindahan', 'curhat'],
     { message: 'categoryId tidak valid' },
   )
   categoryId?: string;
